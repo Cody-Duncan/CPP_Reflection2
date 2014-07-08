@@ -1,33 +1,67 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Source Files">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    <Filter Include="Meta">
+      <UniqueIdentifier>{afab37df-1c41-43c4-a043-888ed17a2ddb}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    <Filter Include="Tests">
+      <UniqueIdentifier>{9841e85f-7a19-4407-ac9b-f16b1aa85d04}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    <Filter Include="Any">
+      <UniqueIdentifier>{f9fc61cb-2613-4b31-880d-2415c855c339}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Meta\Utility">
+      <UniqueIdentifier>{a198fd77-0a8a-425d-99b7-9adba994397b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="TemplateMacroUtil">
+      <UniqueIdentifier>{54073102-d543-4438-956c-ac327035eb30}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Any.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="AnyTest.h">
-      <Filter>Header Files</Filter>
+      <Filter>Tests</Filter>
+    </ClInclude>
+    <ClInclude Include="ExpressionTest.h">
+      <Filter>Tests</Filter>
+    </ClInclude>
+    <ClInclude Include="Any.h">
+      <Filter>Any</Filter>
+    </ClInclude>
+    <ClInclude Include="MetaUtil.h">
+      <Filter>Meta\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="Indices.h">
+      <Filter>TemplateMacroUtil</Filter>
+    </ClInclude>
+    <ClInclude Include="expression.h">
+      <Filter>TemplateMacroUtil</Filter>
+    </ClInclude>
+    <ClInclude Include="MacroHelpers.h">
+      <Filter>TemplateMacroUtil</Filter>
+    </ClInclude>
+    <ClInclude Include="MetaTest.h">
+      <Filter>Tests</Filter>
+    </ClInclude>
+    <ClInclude Include="Meta.h">
+      <Filter>Meta</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AnyTest.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Tests</Filter>
     </ClCompile>
-    <ClCompile Include="main.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="ExpressionTest.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="MetaUtil.cpp">
+      <Filter>Meta\Utility</Filter>
+    </ClCompile>
+    <ClCompile Include="MetaTest.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="Meta.cpp">
+      <Filter>Meta</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
