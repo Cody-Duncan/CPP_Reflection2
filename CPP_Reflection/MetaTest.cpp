@@ -32,9 +32,10 @@ namespace MetaTest
 
 		void stuff(int a, double b, char c) { std::cout << a + b + c << std::endl;  }
 
+		meta_declare(A1);
 	};
-	/*
-	meta_DEFINE(A1)
+
+	meta_define(A1)
 		.member("a", &A1::a) // note that we can bind private m_Members with this style of Get
 		.member("b", &A1::b)
 		.member("c", &A1::c)
@@ -42,7 +43,7 @@ namespace MetaTest
 		.method("bar", &A1::bar)
 		.method("baz", &A1::baz)
 		.method("stuff", &A1::stuff);
-		*/
+
 
 	void Test1()
 	{

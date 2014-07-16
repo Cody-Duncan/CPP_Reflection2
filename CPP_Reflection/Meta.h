@@ -23,6 +23,7 @@ namespace meta
 
 	class TypeRecord
 	{
+	public:
 		enum Qualifier
 		{
 			Q_Void,
@@ -43,26 +44,26 @@ namespace meta
 	private:
 		const char* m_name;
 		size_t m_size;
-		TypeData* m_owner;
-		TypeData* m_type;
+		const TypeData* m_owner;
+		const TypeData* m_type;
 
 	public:
-		Member() : m_name(""), m_size(0) {}
-		Member(const char* name, size_t size) : m_name(name), m_size(size) {}
+		Member() : m_name(""), m_type(nullptr) {}
+		Member(const char* name, const TypeData* type) : m_name(name), m_type(type) {}
 		~Member() {}
 
 		void SetOwner(TypeData* owner) { m_owner = owner; }
-		TypeData* GetOwner() { return m_owner; }
+		const TypeData* GetOwner() { return m_owner; }
 
-		TypeData* GetType() { return m_type; }
+		const TypeData* GetType() { return m_type; }
+
 		const char* GetTypeName() const;
 		std::string GetTypeNameStr() const;
 
 		const char* GetName() { return m_name; }
 		std::string GetNameStr() { return std::string(m_name); }
 
-		size_t GetSize() { return m_size; }
-		
+		size_t GetSize();
 	};
 
 	class Method
@@ -98,21 +99,38 @@ namespace meta
 		size_t m_size;
 
 	protected:
-		static std::unordered_map<std::string, TypeData>* sTypeDictionary;
+		static std::vector<TypeData> s_TypeDataStorage;
+		static std::unordered_map<std::string, unsigned int> sTypeDictionary;
 		std::vector<Member*> m_members;
 		std::vector<Method*> m_methods;
 
 	public:
-		static std::unordered_map<std::string, TypeData>* GetTypeDataStore()
+		friend class TypeData_Creator;
+		
+		//STATIC
+
+		static const std::vector<TypeData>* GetTypeDataStorage()
 		{
-			if(sTypeDictionary == nullptr)
-			{
-				sTypeDictionary = new std::unordered_map<std::string, TypeData>();
-				sTypeDictionary->reserve(TYPEDATA_CONTAINER_SIZE);
-			}
-			return sTypeDictionary;
+			return &s_TypeDataStorage;
 		}
 
+		static const std::unordered_map<std::string, unsigned int>* GetTypeDataDictionary()
+		{
+			return &sTypeDictionary;
+		}
+
+		static int AddTypeData(const char* name, size_t size)
+		{
+			s_TypeDataStorage.emplace_back(name, size);
+
+			unsigned int lastIndex = s_TypeDataStorage.size() - 1;
+			sTypeDictionary.insert( std::make_pair(name, lastIndex) );
+
+			return lastIndex;
+		}
+
+		//Constructors
+		
 		TypeData() : m_name(""), m_size(0) {}
 		
 		TypeData(const char* name, size_t size) : 
@@ -129,6 +147,9 @@ namespace meta
 		
 		~TypeData() {}
 
+
+		//functions
+
 		const char* GetName() const { return m_name; }
 		std::string GetNameStr() const { return std::string(m_name); }
 
@@ -138,23 +159,26 @@ namespace meta
 	class TypeData_Creator
 	{
 	private:
-		TypeData* ref;
+		unsigned int refIndex;
 		TypeData_Creator() {}
 
 	public:
 		TypeData_Creator(const TypeData& rhs)
 		{
-			auto iter_bool = TypeData::GetTypeDataStore()->emplace(rhs.GetNameStr(), rhs);
-			ref = &iter_bool.first->second;		//NOTE: if the map rehashes/resizes, this reference is invalidated. Make sure it's big enough.
+			unsigned int index = TypeData::AddTypeData(rhs.GetName(), rhs.GetSize());
+			refIndex = index;
 		}
 
 		TypeData_Creator(TypeData&& rhs)
 		{
-			auto iter_bool = TypeData::GetTypeDataStore()->emplace(rhs.GetNameStr(), rhs);
-			ref = &iter_bool.first->second;		//NOTE: if the map rehashes/resizes, this reference is invalidated. Make sure it's big enough.
+			unsigned int index = TypeData::AddTypeData(rhs.GetName(), rhs.GetSize());
+			refIndex = index;
 		}
 
-		TypeData* Get() { return ref; }
+		const TypeData* Get() const
+		{
+			return &(*TypeData::GetTypeDataStorage())[refIndex];
+		}
 	};
 
 	// Holder for primitives and types that we cannot edit, and thus cannot create the typedata within.
@@ -165,6 +189,73 @@ namespace meta
 		struct TypeDataHolder
 		{
 			static TypeDataHolder s_TypeData;
+		};
+	}
+
+	namespace internal
+	{
+		// ********** Concrete Member **********
+
+		template<typename Object, typename T>
+		class ConcreteMember : public Member
+		{
+		protected:
+			T Object::*m_memberPtr;
+
+		public:
+			ConcreteMember(const char* name, const TypeData* T_data, T Object::*memberVar) :
+				Member(name, T_data),
+				m_memberPtr(memberVar)
+			{}
+		};
+
+
+		// ********** VarMethod (Concrete Method) **********
+
+		template<typename ReturnType, typename Object, typename... Args>
+		class VarMethod : public Method
+		{
+			ReturnType(Object::*m_methodPtr)(Args...);
+		public:
+			VarMethod(const char* name, ReturnType(Object::*method)(Args...)) :
+				Method(name),
+				m_methodPtr(method)
+			{}
+
+			virtual int GetArity() const { return sizeof...(Args); }
+			virtual TypeRecord GetReturnType() const { return TypeRecord();  } //TODO
+			virtual TypeRecord GetParamType(unsigned int i) const { return TypeRecord(); } //TODO
+		};
+
+		template<typename Object, typename ReturnType, typename... Args>
+		Method* createMethod(const char* name, ReturnType(Object::*method)(Args...))
+		{
+			return new meta::internal::VarMethod<ReturnType, Object, Args...>(name, method);
+		}
+
+
+		// ********** TypeDataBuilder **********
+
+		template <typename Object, bool IsClass>
+		class TypeDataBuilder : public TypeData
+		{
+		public:
+			TypeDataBuilder(const char* name, size_t size) : TypeData(name, size) {}
+
+			template<typename T> 
+			typename std::enable_if<!std::is_member_function_pointer<T>::value, TypeDataBuilder&>::type member(const char* name, T Object::*memberVar )
+			{
+				TypeData* t_data = nullptr; //TODO Get<T>();
+				m_members.push_back(new ConcreteMember<Object, typename std::remove_reference<T>::type>(name, t_data, memberVar));
+				return *this;
+			}
+
+			template<typename ReturnType, typename... Args>
+			TypeDataBuilder& method(const char* name, ReturnType(Object::*method)(Args...) )
+			{
+				m_methods.push_back(createMethod(name, method));
+				return *this;
+			}
 		};
 	}
 }
