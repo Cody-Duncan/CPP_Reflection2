@@ -21,6 +21,42 @@ namespace meta
 		};
 	}
 
+	//has meta
+
+	template <typename T>
+	class has_get_meta 
+	{
+		private:
+			template<typename U> static auto test(void*) -> decltype(std::declval<U>().GetType(), std::true_type());
+			template<typename>   static auto test(...)   -> decltype(std::false_type());
+ 
+		public:
+			static bool const value = std::is_same<decltype(test<T>(0)), std::true_type>::value;
+	};
+
+	template <typename T>
+	class has_meta 
+	{
+		private:
+			template<typename U> static auto test(void*) -> decltype(std::declval<typename U::TypeDataStaticHolder>().s_TypeData, std::true_type());
+			template<typename>   static auto test(...)   -> decltype(std::false_type());
+ 
+		public:
+			static bool const value = std::is_same<decltype(test<T>(0)), std::true_type>::value;
+	};
+
+	//meta lookup
+		
+	template <typename Type, bool HasMeta> struct meta_lookup
+	{
+	};
+
+	template <typename T>
+	const TypeData* Get()
+	{
+		return T::TypeDataStaticHolder::s_TypeData.Get();
+	}
+
 	class TypeRecord
 	{
 	public:
@@ -188,7 +224,7 @@ namespace meta
 		template <typename T>
 		struct TypeDataHolder
 		{
-			static TypeDataHolder s_TypeData;
+			static const TypeData_Creator s_TypeData;
 		};
 	}
 
@@ -237,9 +273,8 @@ namespace meta
 		// ********** TypeDataBuilder **********
 
 		template <typename Object, bool IsClass>
-		class TypeDataBuilder : public TypeData
+		struct TypeDataBuilder : public TypeData
 		{
-		public:
 			TypeDataBuilder(const char* name, size_t size) : TypeData(name, size) {}
 
 			template<typename T> 
@@ -257,16 +292,32 @@ namespace meta
 				return *this;
 			}
 		};
+
+		//specialized for pointer types (cannot have members or methods)
+		template <typename Object> 
+		struct TypeDataBuilder<Object*, true> : public TypeData
+		{
+			TypeDataBuilder(const char* name, size_t size) : TypeData(name, size) 
+			{}
+		};
+
+		//specialized for primitive types (cannot have members or methods)
+		template <typename Object> 
+		struct TypeDataBuilder<Object, false> : public TypeData
+		{
+			TypeDataBuilder(const char* name, size_t size) : TypeData(name, size) 
+			{}
+		};
 	}
 }
 
 #define meta_declare(T)																						\
 	public:																									\
-		struct PrivateTypeDataCreator { static const meta::TypeData_Creator s_TypeData; };					\
-		virtual const meta::TypeData* GetType() const { return PrivateTypeDataCreator::s_TypeData.Get(); }
+		struct TypeDataStaticHolder { static const meta::TypeData_Creator s_TypeData; };					\
+		virtual const meta::TypeData* GetType() const { return TypeDataStaticHolder::s_TypeData.Get(); }
 
 #define meta_declare_primitive(T)	\
 	template<> const meta::TypeData_Creator meta::internal::TypeDataHolder<T>::s_TypeData = meta::internal::TypeDataBuilder<T, !std::is_fundamental<T>::value>(#T, sizeof(T))
 
 #define meta_define(T) \
-	const meta::TypeData_Creator T::PrivateTypeDataCreator::s_TypeData = meta::internal::TypeDataBuilder<T, !std::is_fundamental<T>::value>(#T, sizeof(T))
+	const meta::TypeData_Creator T::TypeDataStaticHolder::s_TypeData = meta::internal::TypeDataBuilder<T, !std::is_fundamental<T>::value>(#T, sizeof(T))

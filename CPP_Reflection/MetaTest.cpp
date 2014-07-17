@@ -7,7 +7,6 @@
 
 
 
-
 namespace MetaTest
 {
 	// a test class
@@ -32,23 +31,31 @@ namespace MetaTest
 
 		void stuff(int a, double b, char c) { std::cout << a + b + c << std::endl;  }
 
-		meta_declare(A1);
+		//meta_declare(A1);
+
+		struct TypeDataStaticHolder { static const meta::TypeData_Creator s_TypeData; };					\
+		virtual const meta::TypeData* GetType() const { return TypeDataStaticHolder::s_TypeData.Get(); }
+
 	};
 
-	meta_define(A1)
-		.member("a", &A1::a) // note that we can bind private m_Members with this style of Get
-		.member("b", &A1::b)
-		.member("c", &A1::c)
-		.method("foo", &A1::foo)
-		.method("bar", &A1::bar)
-		.method("baz", &A1::baz)
-		.method("stuff", &A1::stuff);
+	//meta_define(A1)
+	//	.member("a", &A1::a) // note that we can bind private m_Members with this style of Get
+	//	.member("b", &A1::b)
+	//	.member("c", &A1::c)
+	//	.method("foo", &A1::foo)
+	//	.method("bar", &A1::bar)
+	//	.method("baz", &A1::baz)
+	//	.method("stuff", &A1::stuff);
 
 
 	void Test1()
 	{
+		meta::has_get_meta<A1>::value ;
+
+		meta::has_meta<A1>::value ;
+
 		/*
-		meta::Get<int>();
+		
 
 		A1 a;
 		a.setA(12);
