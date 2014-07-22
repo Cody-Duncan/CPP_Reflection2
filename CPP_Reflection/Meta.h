@@ -21,6 +21,17 @@ namespace meta
 		};
 	}
 
+	/****************************************************************/
+	//                      Meta Lookup / Get                       //
+	/****************************************************************/
+
+	template <typename Type>
+	struct Remove_Ptr_Ref
+	{
+		typedef typename std::remove_const<typename std::remove_reference<Type>::type>::type type;
+	};
+
+
 	//has meta
 
 	template <typename T>
@@ -46,16 +57,77 @@ namespace meta
 	};
 
 	//meta lookup
-		
-	template <typename Type, bool HasMeta> struct meta_lookup
+	
+	template<typename T, bool HasMeta> struct meta_lookup
 	{
+		static const TypeData* Get()
+		{
+			return T::TypeDataStaticHolder::s_TypeData.Get();
+		}
 	};
 
+	template<typename T> struct meta_lookup<T, false>
+	{
+		static const TypeData* Get()
+		{
+			return internal::TypeDataHolder<typename Remove_Ptr_Ref<T>::type>::s_TypeData.Get();
+		}
+	};
+
+	template<> struct meta_lookup<void, false>
+	{
+		static const TypeData* Get()
+		{
+			return &(internal::TypeDataHolder<void>::s_TypeData);
+		}
+	};
+
+	template<> struct meta_lookup<nullptr_t, false>
+	{
+		static const TypeData* Get()
+		{
+			return nullptr; //not sure what to return here
+		}
+	};
+
+	//Get By Type
 	template <typename T>
 	const TypeData* Get()
 	{
-		return T::TypeDataStaticHolder::s_TypeData.Get();
+		return meta_lookup<T, has_meta<T>::value>::Get();
 	}
+
+	//Get From Pointer
+
+	template <typename T>
+	typename std::enable_if<has_get_meta<T>::value, const TypeData*>::type Get(const T* type)
+	{
+		return type->GetType();
+	}
+
+	template <typename T>
+	typename std::enable_if<!has_get_meta<T>::value, const TypeData*>::type Get(const T* type)
+	{
+		return Get<T>();
+	}
+
+	//Get From Reference
+
+	template <typename T>
+	typename std::enable_if<!std::is_pointer<T>::value && has_get_meta<T>::value, const TypeData*>::type Get(const T& type)
+	{
+		return type.GetType();
+	}
+
+	template <typename T>
+	typename std::enable_if<!std::is_pointer<T>::value && !has_get_meta<T>::value, const TypeData*>::type Get(const T& type)
+	{
+		return Get<T>();
+	}
+
+	/*********************************************************/
+	//                      TypeRecord                       //
+	/*********************************************************/
 
 	class TypeRecord
 	{
@@ -65,16 +137,65 @@ namespace meta
 			Q_Void,
 			Q_Value,
 			Q_Reference,
-			Q_Pointer
+			Q_ConstReference,
+			Q_Pointer,
+			Q_ConstPointer
 		};
 
-		TypeData* m_type;
+		const TypeData* m_type;
 		Qualifier m_qualifier;
 
-		TypeRecord(TypeData* type, Qualifier qualifier) : m_type(type), m_qualifier(qualifier) {}
+		TypeRecord(const TypeData* type, Qualifier qualifier) : m_type(type), m_qualifier(qualifier) {}
 		TypeRecord() : m_type(nullptr), m_qualifier(Q_Void){}
 	};
 
+	template <typename T> struct make_type_record
+	{
+		static const TypeRecord type()
+		{
+			return TypeRecord(Get<T>(), TypeRecord::Q_Value);
+		}
+	};
+
+	template <typename T> struct make_type_record<T*>
+	{
+		static const TypeRecord type()
+		{
+			return TypeRecord(Get<T>(), TypeRecord::Q_Pointer);
+		}
+	};
+
+	template <typename T> struct make_type_record<const T*>
+	{
+		static const TypeRecord type()
+		{
+			return TypeRecord(Get<T>(), TypeRecord::Q_ConstPointer);
+		}
+	};
+
+	template <typename T> struct make_type_record<T&>
+	{
+		static const TypeRecord type()
+		{
+			return TypeRecord(Get<T>(), TypeRecord::Q_Reference);
+		}
+	};
+
+	template <typename T> struct make_type_record<const T&>
+	{
+		static const TypeRecord type()
+		{
+			return TypeRecord(Get<T>(), TypeRecord::Q_ConstReference);
+		}
+	};
+
+
+
+
+
+	/*****************************************************/
+	//                      Member                       //
+	/*****************************************************/
 	class Member
 	{
 	private:
@@ -102,6 +223,13 @@ namespace meta
 		size_t GetSize();
 	};
 
+
+
+
+	/*****************************************************/
+	//                      Method                       //
+	/*****************************************************/
+
 	class Method
 	{
 	private:
@@ -127,6 +255,12 @@ namespace meta
 		//CanCall()
 
 	};
+
+
+
+	/*****************************************************/
+	//                     TypeData                      //
+	/*****************************************************/
 
 	class TypeData
 	{
@@ -190,8 +324,22 @@ namespace meta
 		std::string GetNameStr() const { return std::string(m_name); }
 
 		size_t GetSize() const { return m_size; }
+
+		std::vector<Member*>&       GetMembers()       { return m_members; }
+		const std::vector<Member*>& GetMembers() const { return m_members; }
+
+		std::vector<Method*>&       GetMethods()       { return m_methods; }
+		const std::vector<Method*>& GetMethods() const { return m_methods; }
 	};
 
+
+
+
+
+
+	/*****************************************************/
+	//                 TypeData_Creator                  //
+	/*****************************************************/
 	class TypeData_Creator
 	{
 	private:
@@ -217,7 +365,9 @@ namespace meta
 		}
 	};
 
-	// Holder for primitives and types that we cannot edit, and thus cannot create the typedata within.
+	/**************************************************/
+	//                 TypeDataHolder                 //
+	/**************************************************/
 
 	namespace internal
 	{
@@ -230,7 +380,9 @@ namespace meta
 
 	namespace internal
 	{
-		// ********** Concrete Member **********
+		/**************************************************/
+		//                 ConcreteMember                 //
+		/**************************************************/
 
 		template<typename Object, typename T>
 		class ConcreteMember : public Member
@@ -246,7 +398,9 @@ namespace meta
 		};
 
 
-		// ********** VarMethod (Concrete Method) **********
+		/***************************************************************/
+		//                 VerMethod (Concrete Method)                 //
+		/***************************************************************/
 
 		template<typename ReturnType, typename Object, typename... Args>
 		class VarMethod : public Method
@@ -259,8 +413,11 @@ namespace meta
 			{}
 
 			virtual int GetArity() const { return sizeof...(Args); }
-			virtual TypeRecord GetReturnType() const { return TypeRecord();  } //TODO
-			virtual TypeRecord GetParamType(unsigned int i) const { return TypeRecord(); } //TODO
+			virtual TypeRecord GetReturnType() const { return make_type_record<ReturnType>::type(); } 
+			virtual TypeRecord GetParamType(unsigned int i) const 
+			{ 
+				//TODO: this gets tricky.
+			} 
 		};
 
 		template<typename Object, typename ReturnType, typename... Args>
@@ -270,7 +427,10 @@ namespace meta
 		}
 
 
-		// ********** TypeDataBuilder **********
+		
+		/**************************************************************/
+		//                      TypeDataBuilder                       //
+		/**************************************************************/
 
 		template <typename Object, bool IsClass>
 		struct TypeDataBuilder : public TypeData
@@ -311,13 +471,22 @@ namespace meta
 	}
 }
 
+/****************************************************************/
+//                      Macro Builder API                       //
+/****************************************************************/
+
+/// Declares meta information internally to a type.
 #define meta_declare(T)																						\
 	public:																									\
 		struct TypeDataStaticHolder { static const meta::TypeData_Creator s_TypeData; };					\
 		virtual const meta::TypeData* GetType() const { return TypeDataStaticHolder::s_TypeData.Get(); }
 
+
+/// Declares and Defines meta information externally to a type.
 #define meta_declare_primitive(T)	\
 	template<> const meta::TypeData_Creator meta::internal::TypeDataHolder<T>::s_TypeData = meta::internal::TypeDataBuilder<T, !std::is_fundamental<T>::value>(#T, sizeof(T))
 
+
+/// Defines meta information externally. Pair with meta_declare.
 #define meta_define(T) \
 	const meta::TypeData_Creator T::TypeDataStaticHolder::s_TypeData = meta::internal::TypeDataBuilder<T, !std::is_fundamental<T>::value>(#T, sizeof(T))

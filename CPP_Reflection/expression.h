@@ -592,9 +592,4 @@ namespace expr
 
 }
 
-template <typename Type>
-struct Remove_Ptr_Ref
-{
-	typedef typename std::remove_const<typename std::remove_reference<Type>::type>::type type;
-};
 
