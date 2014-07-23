@@ -45,6 +45,9 @@
     <ClInclude Include="Meta.h">
       <Filter>Meta</Filter>
     </ClInclude>
+    <ClInclude Include="MetaProgrammingTests.h">
+      <Filter>Tests</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AnyTest.cpp">
@@ -62,6 +65,9 @@
     </ClCompile>
     <ClCompile Include="Meta.cpp">
       <Filter>Meta</Filter>
+    </ClCompile>
+    <ClCompile Include="MetaProgrammingTests.cpp">
+      <Filter>Tests</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

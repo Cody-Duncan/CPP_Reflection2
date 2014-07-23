@@ -50,20 +50,7 @@ namespace MetaTest
 
 	void Test1()
 	{
-		int e = 1;
-		double b = 2.2;
-		float c = 3.3f;
-		unsigned int d = 4;
-
-		int c2 = select_parameter<3>(e, b, c, d);
-		std::cout << 
-			"Values of parameters in test function. Should be 1, 2.2, 3.3, 4 in" << std::endl <<
-			"    int, double, float, unsigned int" << std::endl <<
-			select_parameter<0>(e, b, c, d) << " " <<
-			select_parameter<1>(e, b, c, d) << " " <<
-			select_parameter<2>(e, b, c, d) << " " <<
-			select_parameter<3>(e, b, c, d) 
-			<< std::endl;
+		
 
 
 		meta::has_get_meta<A1>::value ;
@@ -80,7 +67,11 @@ namespace MetaTest
 		assert(meta::Get<A1>()->GetSize() == sizeof (A1));
 
 
-		
+		if(aInfo->GetMethods().size() > 0 && aInfo->GetMethods()[0]->GetArity())
+		{
+			std::cout << "Getting " <<  aInfo->GetMethods()[0]->GetNameStr() << "'s first param type: ";
+			std::cout <<  aInfo->GetMethods()[0]->GetParamType(0).m_type->GetNameStr() << std::endl;
+		}
 
 
 		////check A1 members

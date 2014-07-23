@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <type_traits>
 
 template <unsigned int... Is>
 struct indices {};
@@ -44,3 +45,47 @@ struct select<0, T, Args...>
 
 template<std::size_t N, typename... Args>
 typename select<N, Args...>::type select_parameter(Args... args) { return select<N, Args...>::get(args...); }
+
+
+
+
+template <typename T>
+class has_type_function 
+{
+	private:
+		template<typename U> static auto test(void*) -> decltype(std::declval<U>().type(), std::true_type());
+		template<typename>   static auto test(...)   -> decltype(std::false_type());
+ 
+	public:
+		static bool const value = std::is_same<decltype(test<T>(0)), std::true_type>::value;
+};
+
+
+template<typename ReturnType, template<typename> class TFunctor, typename... Args>
+ReturnType CallFunctor_type_ByVariadicIndex_Select(int index)
+{
+	static_assert(has_type_function<TFunctor<int>>::value, "Functor does not contain static type() function.") ;
+
+	//expand to typed function pointers
+	static ReturnType (*makeFuncs[])() =
+	{
+		&TFunctor<Args>::type...
+	};
+
+	std::cout << "NumArgs: " << sizeof(makeFuncs) / sizeof(makeFuncs[0]) << std::endl;
+
+	//check range
+	if (index < 0 || sizeof...(Args) <= index) 
+	{
+        throw std::range_error("type index out of range");
+    }
+
+	//grab the function pointer by index
+	return makeFuncs[index]();
+}
+
+template<typename ReturnType, template<typename> class TFunctor, typename... Args>
+ReturnType CallFunctor_type_ByVariadicIndex(int i)
+{
+	return CallFunctor_type_ByVariadicIndex_Select<ReturnType, TFunctor, Args...>(i);
+}

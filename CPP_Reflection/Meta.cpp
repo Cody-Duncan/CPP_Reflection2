@@ -16,3 +16,4 @@ namespace meta
 meta_declare_primitive(int);
 meta_declare_primitive(float);
 meta_declare_primitive(char);
+meta_declare_primitive(double);

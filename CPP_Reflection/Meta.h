@@ -189,9 +189,21 @@ namespace meta
 		}
 	};
 
+	// Make a TypeRecord from a specific type in variadic template, specified by index
 
+	template<typename... Args>
+	const TypeRecord make_type_record_byVariadicIndex(int i)
+	{
+		return CallFunctor_type_ByVariadicIndex<const TypeRecord, make_type_record, Args...>(i);
+	}
 
+	//overload for functions with 0 arguments.
 
+	template<>
+	inline const TypeRecord make_type_record_byVariadicIndex<>(int i)
+	{
+		return TypeRecord(Get<void>(), TypeRecord::Qualifier::Q_Void);
+	}
 
 	/*****************************************************/
 	//                      Member                       //
@@ -349,6 +361,7 @@ namespace meta
 	public:
 		TypeData_Creator(const TypeData& rhs)
 		{
+			//TODO: this AddTypeData doesn't cover members and methods
 			unsigned int index = TypeData::AddTypeData(rhs.GetName(), rhs.GetSize());
 			refIndex = index;
 		}
@@ -417,6 +430,7 @@ namespace meta
 			virtual TypeRecord GetParamType(unsigned int i) const 
 			{ 
 				//TODO: this gets tricky.
+				return make_type_record_byVariadicIndex<Args...>(i);
 			} 
 		};
 

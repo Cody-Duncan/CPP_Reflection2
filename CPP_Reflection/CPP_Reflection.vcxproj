@@ -85,6 +85,7 @@
     <ClInclude Include="Indices.h" />
     <ClInclude Include="MacroHelpers.h" />
     <ClInclude Include="Meta.h" />
+    <ClInclude Include="MetaProgrammingTests.h" />
     <ClInclude Include="MetaTest.h" />
     <ClInclude Include="MetaUtil.h" />
   </ItemGroup>
@@ -93,6 +94,7 @@
     <ClCompile Include="ExpressionTest.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Meta.cpp" />
+    <ClCompile Include="MetaProgrammingTests.cpp" />
     <ClCompile Include="MetaTest.cpp" />
     <ClCompile Include="MetaUtil.cpp" />
   </ItemGroup>
