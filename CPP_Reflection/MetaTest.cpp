@@ -20,7 +20,7 @@ namespace MetaTest
 		float baz(double d, char is_const) { return d > (double)is_const ? (float)(d * 0.5) : 0.f; }
 
 	public:
-		A1(): a(0), b(0.0f), c(0) {}
+		A1() : a(0), b(0.0f), c(0) {}
 
 		int getA() const { return a; }
 		void setA(int _) { a = _; }
@@ -29,12 +29,12 @@ namespace MetaTest
 
 		void foo() { a *= 3; }
 
-		void stuff(int a, double b, char c) { std::cout << a + b + c << std::endl;  }
+		void stuff(int a, double b, char c) { std::cout << a + b + c << std::endl; }
 
 		//meta_declare(A1);
 
 		struct TypeDataStaticHolder { static const meta::TypeData_Creator s_TypeData; };					\
-		virtual const meta::TypeData* GetType() const { return TypeDataStaticHolder::s_TypeData.Get(); }
+			virtual const meta::TypeData* GetType() const { return TypeDataStaticHolder::s_TypeData.Get(); }
 
 	};
 
@@ -47,20 +47,26 @@ namespace MetaTest
 		.method("baz", &A1::baz)
 		.method("stuff", &A1::stuff);
 
+	template<unsigned int... Is>
+	void doStuff(indices < Is...> ind)
+	{
+		static_assert(sizeof...(Is) == 0, "Not same size");
+	}
 
 	void Test1()
 	{
 		
 
-
 		meta::has_get_meta<A1>::value ;
 
 		meta::has_meta<A1>::value ;
 
+		doStuff( build_indices<0>{});
 
 		A1 a;
 		a.setA(12);
 	
+
 		//check A1 type
 		const meta::TypeData* aInfo = meta::Get<A1>();
 		std::cout << "Info on type: " <<  aInfo->GetName() << std::endl;

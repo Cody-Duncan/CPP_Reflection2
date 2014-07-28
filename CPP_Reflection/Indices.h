@@ -13,6 +13,11 @@ template <unsigned int... Is>
 struct build_indices<0, Is...> : indices<Is...>{};
 
 
+template<unsigned int... Is>
+indices<Is...> toIndices(indices< Is...>& ind)
+{
+	return ind;
+}
 
 
 template <std::size_t N, typename... Args> struct select 

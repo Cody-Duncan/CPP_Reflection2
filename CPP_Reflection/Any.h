@@ -216,6 +216,17 @@ public:
         return *r;
     }
 
+	template<typename T>
+    T* getPointer() 
+	{
+		if(policy != anyimpl::get_policy<T>())
+		{
+			throw anyimpl::bad_any_cast();
+		}
+        T* r = reinterpret_cast<T*>(policy->get_value(&object)); 
+        return r;
+    }
+
 	/// Returns true if the any contains no value. 
     bool empty() const 
 	{
@@ -235,3 +246,14 @@ public:
     }
 };
 
+template <typename Type> 
+struct make_any
+{
+	static Any make(Type value) { return Any(value); }
+};
+
+template <typename Type> 
+struct make_any<Type&>
+{
+	static Any make(Type& value) { return Any(&value); }
+};

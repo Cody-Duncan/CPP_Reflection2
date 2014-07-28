@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <unordered_map>
+#include "Any.h"
 
 #define TYPEDATA_CONTAINER_SIZE 256
 
@@ -186,6 +187,14 @@ namespace meta
 		static const TypeRecord type()
 		{
 			return TypeRecord(Get<T>(), TypeRecord::Q_ConstReference);
+		}
+	};
+
+		template <> struct make_type_record<void>
+	{
+		static const TypeRecord type()
+		{
+			return TypeRecord(Get<void>(), TypeRecord::Q_Void);
 		}
 	};
 
@@ -414,24 +423,91 @@ namespace meta
 		/***************************************************************/
 		//                 VerMethod (Concrete Method)                 //
 		/***************************************************************/
+		
+		// Member function invoker for functions that have a return value.
+		namespace retTypeCall
+		{
+			//This expands the array of Any objects, casts them to thier appropriate types, and sends them as arguements to the member function.
+			// The return value is wrapped in an any and returned.
+			template<typename ObjectT, typename ReturnT, unsigned int... Is, template <unsigned int...> class indicesT, typename... Args>
+			Any Call_Internal(ReturnT(ObjectT::*method)(Args...), ObjectT* obj, Any* argv, indicesT<Is...> indices)
+			{
+				return make_any<ReturnT>::make((obj->*method)(*argv[Is].getPointer<Args>()...));
+			}
 
-		template<typename ReturnType, typename Object, typename... Args>
+			template <typename ObjectT, typename ReturnT, typename... Args>
+			Any Call(ReturnT(ObjectT::*method)(Args...), ObjectT* obj, Any* argv)
+			{
+				assert((sizeof...(Args) > 0 && argv != nullptr) ||		    // if has args, must not have null argv.
+					(sizeof...(Args) == 0 && argv == nullptr));			// if no args, must have null argv.
+				return Call_Internal(method, obj, argv, toIndices(build_indices<sizeof...(Args)>{}));
+			}
+		}
+
+
+		template<typename ReturnT, typename Object, typename... Args>
 		class VarMethod : public Method
 		{
-			ReturnType(Object::*m_methodPtr)(Args...);
+			ReturnT(Object::*m_methodPtr)(Args...);
 		public:
-			VarMethod(const char* name, ReturnType(Object::*method)(Args...)) :
+			VarMethod(const char* name, ReturnT(Object::*method)(Args...)) :
 				Method(name),
 				m_methodPtr(method)
 			{}
 
 			virtual int GetArity() const { return sizeof...(Args); }
-			virtual TypeRecord GetReturnType() const { return make_type_record<ReturnType>::type(); } 
+			virtual TypeRecord GetReturnType() const { return make_type_record<ReturnT>::type(); } 
 			virtual TypeRecord GetParamType(unsigned int i) const 
 			{ 
-				//TODO: this gets tricky.
 				return make_type_record_byVariadicIndex<Args...>(i);
 			} 
+
+			virtual Any DoCall(Any& obj, Any* argv) const 
+			{
+				return meta::internal::retTypeCall::Call(m_methodPtr, obj.getPointer<Object>(), argv);
+			}
+		};
+
+		namespace retVoidCall
+		{
+			template<typename ObjectT, unsigned int... Is, template <unsigned int... > class indicesT, typename... Args>
+			void Call_Internal(void (ObjectT::*method)(Args...), ObjectT* obj, Any* argv, indicesT<Is...> indices)
+			{
+				return (obj->*method)(*argv[Is].getPointer<Args>()...);
+			}
+
+			template <typename ObjectT, typename... Args>
+			void Call(void(ObjectT::*method)(Args...), ObjectT* obj, Any* argv)
+			{
+				assert((sizeof...(Args) > 0 && argv != nullptr) ||		    // if has args, must not have null argv.
+					(sizeof...(Args) == 0 && argv == nullptr));			// if no args, must have null argv.
+				return Call_Internal(method, obj, argv, toIndices(build_indices<sizeof...(Args)>{}));
+			}
+		}
+
+		template<typename Object, typename... Args>
+		class VarMethod<void, Object, Args...> : public Method
+		{
+			void (Object::*m_methodPtr)(Args...);
+		public:
+			VarMethod(const char* name, void (Object::*method)(Args...)) :
+				Method(name),
+				m_methodPtr(method)
+			{}
+
+			virtual int GetArity() const { return sizeof...(Args); }
+			virtual TypeRecord GetReturnType() const { return make_type_record<void>::type(); } 
+			virtual TypeRecord GetParamType(unsigned int i) const 
+			{ 
+				return make_type_record_byVariadicIndex<Args...>(i);
+			} 
+
+			//void return
+			virtual Any DoCall(Any& obj, Any* argv) const 
+			{
+				meta::internal::retVoidCall::Call(m_methodPtr, obj.getPointer<Object>(), argv);
+				return Any();
+			}
 		};
 
 		template<typename Object, typename ReturnType, typename... Args>
@@ -485,9 +561,9 @@ namespace meta
 	}
 }
 
-/****************************************************************/
-//                      Macro Builder API                       //
-/****************************************************************/
+/**************************************************************************/
+//                      Reflection Data Building API                      //
+/**************************************************************************/
 
 /// Declares meta information internally to a type.
 #define meta_declare(T)																						\
