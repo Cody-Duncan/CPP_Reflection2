@@ -425,24 +425,24 @@ namespace meta
 		/***************************************************************/
 		
 		// Member function invoker for functions that have a return value.
-		namespace retTypeCall
-		{
-			//This expands the array of Any objects, casts them to thier appropriate types, and sends them as arguements to the member function.
-			// The return value is wrapped in an any and returned.
-			template<typename ObjectT, typename ReturnT, unsigned int... Is, template <unsigned int...> class indicesT, typename... Args>
-			Any Call_Internal(ReturnT(ObjectT::*method)(Args...), ObjectT* obj, Any* argv, indicesT<Is...> indices)
-			{
-				return make_any<ReturnT>::make((obj->*method)(*argv[Is].getPointer<Args>()...));
-			}
 
-			template <typename ObjectT, typename ReturnT, typename... Args>
-			Any Call(ReturnT(ObjectT::*method)(Args...), ObjectT* obj, Any* argv)
-			{
-				assert((sizeof...(Args) > 0 && argv != nullptr) ||		    // if has args, must not have null argv.
-					(sizeof...(Args) == 0 && argv == nullptr));			// if no args, must have null argv.
-				return Call_Internal(method, obj, argv, toIndices(build_indices<sizeof...(Args)>{}));
-			}
+		
+		//This expands the array of Any objects, casts them to thier appropriate types, and sends them as arguements to the member function.
+		template<typename ObjectT, typename ReturnT, unsigned int... Is, template <unsigned int...> class indicesT, typename... Args>
+		ReturnT Call_Internal(ReturnT(ObjectT::*method)(Args...), ObjectT* obj, Any* argv, indicesT<Is...> indices)
+		{
+			return (obj->*method)(*argv[Is].getPointer<Args>()...);
 		}
+
+		//This creates the indices trick, to create a pack of indices for referencing the elements in the argv array.
+		template <typename ObjectT, typename ReturnT, typename... Args>
+		ReturnT Call(ReturnT(ObjectT::*method)(Args...), ObjectT* obj, Any* argv)
+		{
+			assert((sizeof...(Args) >  0 && argv != nullptr) ||		        // if has args, must not have null argv.
+					(sizeof...(Args) == 0 && argv == nullptr)    );			// if no args, must have null argv.
+			return Call_Internal(method, obj, argv, toIndices(build_indices<sizeof...(Args)>{}));
+		}
+		
 
 
 		template<typename ReturnT, typename Object, typename... Args>
@@ -464,26 +464,11 @@ namespace meta
 
 			virtual Any DoCall(Any& obj, Any* argv) const 
 			{
-				return meta::internal::retTypeCall::Call(m_methodPtr, obj.getPointer<Object>(), argv);
+				return make_any<ReturnT>::make(meta::internal::Call(m_methodPtr, obj.getPointer<Object>(), argv));
 			}
 		};
 
-		namespace retVoidCall
-		{
-			template<typename ObjectT, unsigned int... Is, template <unsigned int... > class indicesT, typename... Args>
-			void Call_Internal(void (ObjectT::*method)(Args...), ObjectT* obj, Any* argv, indicesT<Is...> indices)
-			{
-				return (obj->*method)(*argv[Is].getPointer<Args>()...);
-			}
-
-			template <typename ObjectT, typename... Args>
-			void Call(void(ObjectT::*method)(Args...), ObjectT* obj, Any* argv)
-			{
-				assert((sizeof...(Args) > 0 && argv != nullptr) ||		    // if has args, must not have null argv.
-					(sizeof...(Args) == 0 && argv == nullptr));			// if no args, must have null argv.
-				return Call_Internal(method, obj, argv, toIndices(build_indices<sizeof...(Args)>{}));
-			}
-		}
+		
 
 		template<typename Object, typename... Args>
 		class VarMethod<void, Object, Args...> : public Method
@@ -505,7 +490,7 @@ namespace meta
 			//void return
 			virtual Any DoCall(Any& obj, Any* argv) const 
 			{
-				meta::internal::retVoidCall::Call(m_methodPtr, obj.getPointer<Object>(), argv);
+				meta::internal::Call(m_methodPtr, obj.getPointer<Object>(), argv);
 				return Any();
 			}
 		};
