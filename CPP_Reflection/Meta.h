@@ -424,10 +424,9 @@ namespace meta
 		//                 VerMethod (Concrete Method)                 //
 		/***************************************************************/
 		
-		// Member function invoker for functions that have a return value.
-
 		
 		//This expands the array of Any objects, casts them to thier appropriate types, and sends them as arguements to the member function.
+		//Note indicesT is only there because it separates the Is and Args parameter packs. This cannot work with a struct without a wrapper like tuple to hold the packs.
 		template<typename ObjectT, typename ReturnT, unsigned int... Is, template <unsigned int...> class indicesT, typename... Args>
 		ReturnT Call_Internal(ReturnT(ObjectT::*method)(Args...), ObjectT* obj, Any* argv, indicesT<Is...> indices)
 		{
@@ -444,7 +443,7 @@ namespace meta
 		}
 		
 
-
+		// VarMethod - Return Type
 		template<typename ReturnT, typename Object, typename... Args>
 		class VarMethod : public Method
 		{
@@ -469,7 +468,7 @@ namespace meta
 		};
 
 		
-
+		// VarMethod - void Return
 		template<typename Object, typename... Args>
 		class VarMethod<void, Object, Args...> : public Method
 		{
@@ -495,6 +494,7 @@ namespace meta
 			}
 		};
 
+		// Saves a function pointer inside a VarMethod
 		template<typename Object, typename ReturnType, typename... Args>
 		Method* createMethod(const char* name, ReturnType(Object::*method)(Args...))
 		{
