@@ -29,7 +29,7 @@ namespace MetaTest
 
 		void foo() { a *= 3; }
 
-		void stuff(int a, double b, char c) { std::cout << a + b + c << std::endl; }
+		void stuff(int a, double b, char c) const { std::cout << a + b + c << std::endl; }
 
 		//meta_declare(A1);
 
@@ -65,7 +65,9 @@ namespace MetaTest
 
 		A1 a;
 		a.setA(12);
-	
+
+
+		
 
 		//check A1 type
 		const meta::TypeData* aInfo = meta::Get<A1>();

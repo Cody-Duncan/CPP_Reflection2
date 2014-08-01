@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <unordered_map>
+#include <algorithm>
 #include "Any.h"
 
 #define TYPEDATA_CONTAINER_SIZE 256
@@ -320,6 +321,26 @@ namespace meta
 			return lastIndex;
 		}
 
+		static int AddTypeData(const TypeData& rhs)
+		{
+			s_TypeDataStorage.emplace_back(rhs);
+
+			unsigned int lastIndex = s_TypeDataStorage.size() - 1;
+			sTypeDictionary.insert( std::make_pair(rhs.m_name, lastIndex) );
+
+			return lastIndex;
+		}
+
+		static int AddTypeData(TypeData&& rhs)
+		{
+			s_TypeDataStorage.emplace_back(rhs);
+
+			unsigned int lastIndex = s_TypeDataStorage.size() - 1;
+			sTypeDictionary.insert( std::make_pair(s_TypeDataStorage[lastIndex].m_name, lastIndex) );
+
+			return lastIndex;
+		}
+
 		//Constructors
 		
 		TypeData() : m_name(""), m_size(0) {}
@@ -334,7 +355,10 @@ namespace meta
 			m_size(rhs.m_size), 
 			m_members(std::move(rhs.m_members)), 
 			m_methods(std::move(rhs.m_methods)) 
-		{}
+		{
+			std::for_each(m_members.begin(), m_members.end(), [&](Member* &mem)  { mem->SetOwner(this); });
+			std::for_each(m_methods.begin(), m_methods.end(), [&](Method* &mthd) { mthd->SetOwner(this); });
+		}
 		
 		~TypeData() {}
 
@@ -371,13 +395,13 @@ namespace meta
 		TypeData_Creator(const TypeData& rhs)
 		{
 			//TODO: this AddTypeData doesn't cover members and methods
-			unsigned int index = TypeData::AddTypeData(rhs.GetName(), rhs.GetSize());
+			unsigned int index = TypeData::AddTypeData(rhs);
 			refIndex = index;
 		}
 
 		TypeData_Creator(TypeData&& rhs)
 		{
-			unsigned int index = TypeData::AddTypeData(rhs.GetName(), rhs.GetSize());
+			unsigned int index = TypeData::AddTypeData(rhs);
 			refIndex = index;
 		}
 
@@ -424,6 +448,24 @@ namespace meta
 		//                 VerMethod (Concrete Method)                 //
 		/***************************************************************/
 		
+		template<typename ReturnT, typename Object, bool isConst, typename... Args>
+		class MethodPtr
+		{
+		};
+
+		template<typename ReturnT, typename Object, typename... Args>
+		class MethodPtr<ReturnT, Object, false, Args...>
+		{
+		public:
+			typedef ReturnT(Object::*MethodPointerT)(Args...);
+		};
+
+		template<typename ReturnT, typename Object, typename... Args>
+		class MethodPtr<ReturnT, Object, true, Args...>
+		{
+		public:
+			typedef ReturnT(Object::*MethodPointerT)(Args...) const;
+		};
 		
 		//This expands the array of Any objects, casts them to thier appropriate types, and sends them as arguements to the member function.
 		//Note indicesT is only there because it separates the Is and Args parameter packs. This cannot work with a struct without a wrapper like tuple to hold the packs.
@@ -441,15 +483,33 @@ namespace meta
 					(sizeof...(Args) == 0 && argv == nullptr)    );			// if no args, must have null argv.
 			return Call_Internal(method, obj, argv, toIndices(build_indices<sizeof...(Args)>{}));
 		}
+
+		// CONST METHODS //
+
+		template<typename ObjectT, typename ReturnT, unsigned int... Is, template <unsigned int...> class indicesT, typename... Args>
+		ReturnT Call_Internal(ReturnT(ObjectT::*method)(Args...) const, ObjectT* obj, Any* argv, indicesT<Is...> indices)
+		{
+			return (obj->*method)(*argv[Is].getPointer<Args>()...);
+		}
+
+		//This creates the indices trick, to create a pack of indices for referencing the elements in the argv array.
+		template <typename ObjectT, typename ReturnT, typename... Args>
+		ReturnT Call(ReturnT(ObjectT::*method)(Args...) const, ObjectT* obj, Any* argv)
+		{
+			assert((sizeof...(Args) >  0 && argv != nullptr) ||		        // if has args, must not have null argv.
+					(sizeof...(Args) == 0 && argv == nullptr)    );			// if no args, must have null argv.
+			return Call_Internal(method, obj, argv, toIndices(build_indices<sizeof...(Args)>{}));
+		}
 		
 
 		// VarMethod - Return Type
-		template<typename ReturnT, typename Object, typename... Args>
+		template<typename ReturnT, typename Object, bool isConst, typename... Args>
 		class VarMethod : public Method
 		{
-			ReturnT(Object::*m_methodPtr)(Args...);
+			typedef typename MethodPtr<ReturnT, Object, isConst, Args...>::MethodPointerT MethodPointerT;
+			MethodPointerT m_methodPtr;
 		public:
-			VarMethod(const char* name, ReturnT(Object::*method)(Args...)) :
+			VarMethod(const char* name, MethodPointerT method) :
 				Method(name),
 				m_methodPtr(method)
 			{}
@@ -469,12 +529,13 @@ namespace meta
 
 		
 		// VarMethod - void Return
-		template<typename Object, typename... Args>
-		class VarMethod<void, Object, Args...> : public Method
+		template<typename Object, bool isConst, typename... Args>
+		class VarMethod<void, Object, isConst, Args...> : public Method
 		{
-			void (Object::*m_methodPtr)(Args...);
+			typedef typename MethodPtr<void, Object, isConst, Args...>::MethodPointerT MethodPointerT;
+			MethodPointerT m_methodPtr;
 		public:
-			VarMethod(const char* name, void (Object::*method)(Args...)) :
+			VarMethod(const char* name, MethodPointerT method) :
 				Method(name),
 				m_methodPtr(method)
 			{}
@@ -498,8 +559,15 @@ namespace meta
 		template<typename Object, typename ReturnType, typename... Args>
 		Method* createMethod(const char* name, ReturnType(Object::*method)(Args...))
 		{
-			return new meta::internal::VarMethod<ReturnType, Object, Args...>(name, method);
+			return new meta::internal::VarMethod<ReturnType, Object, false, Args...>(name, method);
 		}
+
+		template<typename Object, typename ReturnType, typename... Args>
+		Method* createMethod(const char* name, ReturnType(Object::*method)(Args...) const)
+		{
+			return new meta::internal::VarMethod<ReturnType, Object, true, Args...>(name, method);
+		}
+
 
 
 		
@@ -522,6 +590,13 @@ namespace meta
 
 			template<typename ReturnType, typename... Args>
 			TypeDataBuilder& method(const char* name, ReturnType(Object::*method)(Args...) )
+			{
+				m_methods.push_back(createMethod(name, method));
+				return *this;
+			}
+
+			template<typename ReturnType, typename... Args>
+			TypeDataBuilder& method(const char* name, ReturnType(Object::*method)(Args...) const )
 			{
 				m_methods.push_back(createMethod(name, method));
 				return *this;

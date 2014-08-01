@@ -13,7 +13,7 @@ int main(int argc, const char* argv[])
 
 	//AnyTest::BasicTest();
 	//ExpressionTest::BasicTest();
-	//MetaTest::Test1();
+	MetaTest::Test1();
 
 	//IndicesExpansionTest();
 	
