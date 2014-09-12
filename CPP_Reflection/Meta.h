@@ -221,25 +221,40 @@ namespace meta
 	class Member
 	{
 	private:
-		const char* m_name;
-		size_t m_size;
+		const char*     m_name;
 		const TypeData* m_owner;
 		const TypeData* m_type;
 
 	public:
 		Member() : m_name(""), m_type(nullptr) {}
 		Member(const char* name, const TypeData* type) : m_name(name), m_type(type) {}
+		
+		Member(const Member& mem) :
+			m_name(mem.m_name), 
+			m_owner(mem.m_owner), 
+			m_type(mem.m_type) 
+		{}
+
+		Member(Member&& mem) : 
+			m_name(mem.m_name), 
+			m_owner(mem.m_owner), 
+			m_type(mem.m_type) 
+		{
+			mem.m_name = "";
+			mem.m_owner = nullptr;
+			mem.m_type = nullptr;
+		}
 		~Member() {}
 
 		void SetOwner(TypeData* owner) { m_owner = owner; }
 		const TypeData* GetOwner() { return m_owner; }
 
-		const TypeData* GetType() { return m_type; }
+		const TypeData* GetType() const { return m_type; }
 
 		const char* GetTypeName() const;
 		std::string GetTypeNameStr() const;
 
-		const char* GetName() { return m_name; }
+		const char* GetName() const { return m_name; }
 		std::string GetNameStr() { return std::string(m_name); }
 
 		size_t GetSize();
@@ -261,6 +276,17 @@ namespace meta
 	public:
 		Method() : m_name("") {}
 		Method(const char* name) : m_name(name) {}
+		Method(const Method& mem) : m_name(mem.m_name), m_owner(mem.m_owner)
+		{}
+
+		Method(Method&& mem) :
+			m_name(mem.m_name),
+			m_owner(mem.m_owner)
+		{
+			mem.m_name = "";
+			mem.m_owner = nullptr;
+		}
+
 		~Method() {}
 
 		void SetOwner(TypeData* owner) { m_owner = owner; }
@@ -333,7 +359,7 @@ namespace meta
 
 		static int AddTypeData(TypeData&& rhs)
 		{
-			s_TypeDataStorage.emplace_back(rhs);
+			s_TypeDataStorage.emplace_back(std::move(rhs));
 
 			unsigned int lastIndex = s_TypeDataStorage.size() - 1;
 			sTypeDictionary.insert( std::make_pair(s_TypeDataStorage[lastIndex].m_name, lastIndex) );
@@ -353,9 +379,10 @@ namespace meta
 		TypeData(TypeData&& rhs) : 
 			m_name(rhs.m_name), 
 			m_size(rhs.m_size), 
-			m_members(std::move(rhs.m_members)), 
-			m_methods(std::move(rhs.m_methods)) 
+			m_members(rhs.m_members), 
+			m_methods(rhs.m_methods) 
 		{
+			std::string name = rhs.GetName();
 			std::for_each(m_members.begin(), m_members.end(), [&](Member* &mem)  { mem->SetOwner(this); });
 			std::for_each(m_methods.begin(), m_methods.end(), [&](Method* &mthd) { mthd->SetOwner(this); });
 		}
@@ -401,7 +428,7 @@ namespace meta
 
 		TypeData_Creator(TypeData&& rhs)
 		{
-			unsigned int index = TypeData::AddTypeData(rhs);
+			unsigned int index = TypeData::AddTypeData(std::move(rhs));
 			refIndex = index;
 		}
 
@@ -583,8 +610,9 @@ namespace meta
 			template<typename T> 
 			typename std::enable_if<!std::is_member_function_pointer<T>::value, TypeDataBuilder&>::type member(const char* name, T Object::*memberVar )
 			{
-				TypeData* t_data = nullptr; //TODO Get<T>();
+				const TypeData* t_data = meta::Get<T>();
 				m_members.push_back(new ConcreteMember<Object, typename std::remove_reference<T>::type>(name, t_data, memberVar));
+				
 				return *this;
 			}
 
@@ -600,6 +628,11 @@ namespace meta
 			{
 				m_methods.push_back(createMethod(name, method));
 				return *this;
+			}
+
+			TypeDataBuilder&& finish()
+			{
+				return std::move(*this);
 			}
 		};
 

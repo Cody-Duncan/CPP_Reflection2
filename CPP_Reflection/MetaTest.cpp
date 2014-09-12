@@ -34,7 +34,7 @@ namespace MetaTest
 		//meta_declare(A1);
 
 		struct TypeDataStaticHolder { static const meta::TypeData_Creator s_TypeData; };					\
-			virtual const meta::TypeData* GetType() const { return TypeDataStaticHolder::s_TypeData.Get(); }
+		virtual const meta::TypeData* GetType() const { return TypeDataStaticHolder::s_TypeData.Get(); }
 
 	};
 
@@ -45,23 +45,15 @@ namespace MetaTest
 		.method("foo", &A1::foo)
 		.method("bar", &A1::bar)
 		.method("baz", &A1::baz)
-		.method("stuff", &A1::stuff);
+		.method("stuff", &A1::stuff)
+		.finish();
 
-	template<unsigned int... Is>
-	void doStuff(indices < Is...> ind)
-	{
-		static_assert(sizeof...(Is) == 0, "Not same size");
-	}
 
 	void Test1()
 	{
-		
-
 		meta::has_get_meta<A1>::value ;
 
 		meta::has_meta<A1>::value ;
-
-		doStuff( build_indices<0>{});
 
 		A1 a;
 		a.setA(12);
@@ -75,35 +67,35 @@ namespace MetaTest
 		assert(meta::Get<A1>()->GetSize() == sizeof (A1));
 
 
-		if(aInfo->GetMethods().size() > 0 && aInfo->GetMethods()[0]->GetArity())
+		if(aInfo->GetMethods().size() > 0 && aInfo->GetMethods()[1]->GetArity())
 		{
-			std::cout << "Getting " <<  aInfo->GetMethods()[0]->GetNameStr() << "'s first param type: ";
-			std::cout <<  aInfo->GetMethods()[0]->GetParamType(0).m_type->GetNameStr() << std::endl;
+			std::cout << "Getting " <<  aInfo->GetMethods()[1]->GetNameStr() << "'s first param type: ";
+			std::cout <<  aInfo->GetMethods()[1]->GetParamType(0).m_type->GetNameStr() << std::endl;
 		}
 
 
-		////check A1 members
-		//for(unsigned int i = 0; i < aInfo->GetMembers().size(); ++i)
-		//{
-		//	const meta::Member* m = aInfo->GetMembers()[i];
-		//	std::cout << m->GetType()->GetName() << " " << m->GetName() << std::endl;
-		//}
+		//check A1 members
+		for(unsigned int i = 0; i < aInfo->GetMembers().size(); ++i)
+		{
+			const meta::Member* m = aInfo->GetMembers()[i];
+			std::cout << m->GetType()->GetName() << " " << m->GetName() << std::endl;
+		}
 
-		////Check A1 methods
-		//for(unsigned int i = 0; i < aInfo->GetMethods().size(); ++i)
-		//{
-		//	const meta::Method* m = aInfo->GetMethods()[i];
-		//	std::cout << m->GetReturnType().type->GetName() << " " << m->GetName() << "(";
-		//	for(int k = 0; k < m->GetArity(); ++k)
-		//	{
-		//		std::cout << m->GetParamType(k).type->GetName();
-		//		if(k != m->GetArity() - 1)
-		//		{
-		//			std::cout << ", ";
-		//		}
-		//	}
-		//	std::cout << ")" << std::endl;
-		//}
+		//Check A1 methods
+		for(unsigned int i = 0; i < aInfo->GetMethods().size(); ++i)
+		{
+			const meta::Method* m = aInfo->GetMethods()[i];
+			std::cout << m->GetReturnType().m_type->GetName() << " " << m->GetName() << "(";
+			for(int k = 0; k < m->GetArity(); ++k)
+			{
+				std::cout << m->GetParamType(k).m_type->GetName();
+				if(k != m->GetArity() - 1)
+				{
+					std::cout << ", ";
+				}
+			}
+			std::cout << ")" << std::endl;
+		}
 		
 	}
 }
