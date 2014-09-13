@@ -88,6 +88,7 @@
     <ClInclude Include="MetaProgrammingTests.h" />
     <ClInclude Include="MetaTest.h" />
     <ClInclude Include="MetaUtil.h" />
+    <ClInclude Include="static_vector.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AnyTest.cpp" />

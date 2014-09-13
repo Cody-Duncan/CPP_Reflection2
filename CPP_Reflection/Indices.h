@@ -77,8 +77,6 @@ ReturnType CallFunctor_type_ByVariadicIndex_Select(int index)
 		&TFunctor<Args>::type...
 	};
 
-	std::cout << "NumArgs: " << sizeof(makeFuncs) / sizeof(makeFuncs[0]) << std::endl;
-
 	//check range
 	if (index < 0 || sizeof...(Args) <= index) 
 	{

@@ -88,7 +88,8 @@ namespace MetaTest
 			std::cout << m->GetReturnType().m_type->GetName() << " " << m->GetName() << "(";
 			for(int k = 0; k < m->GetArity(); ++k)
 			{
-				std::cout << m->GetParamType(k).m_type->GetName();
+				auto typedata = m->GetParamType(k).m_type;
+				std::cout << typedata->GetName();
 				if(k != m->GetArity() - 1)
 				{
 					std::cout << ", ";

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vector>
+#include "static_vector.h"
 #include <unordered_map>
 #include <algorithm>
 #include "Any.h"
@@ -317,7 +317,7 @@ namespace meta
 		size_t m_size;
 
 	protected:
-		static std::vector<TypeData> s_TypeDataStorage;
+		static static_vector<TypeData> s_TypeDataStorage;
 		static std::unordered_map<std::string, unsigned int> sTypeDictionary;
 		std::vector<Member*> m_members;
 		std::vector<Method*> m_methods;
@@ -339,6 +339,8 @@ namespace meta
 
 		static int AddTypeData(const char* name, size_t size)
 		{
+			assert(s_TypeDataStorage.size() <= TYPEDATA_CONTAINER_SIZE);
+
 			s_TypeDataStorage.emplace_back(name, size);
 
 			unsigned int lastIndex = s_TypeDataStorage.size() - 1;
@@ -349,6 +351,8 @@ namespace meta
 
 		static int AddTypeData(const TypeData& rhs)
 		{
+			assert(s_TypeDataStorage.size() <= TYPEDATA_CONTAINER_SIZE);
+
 			s_TypeDataStorage.emplace_back(rhs);
 
 			unsigned int lastIndex = s_TypeDataStorage.size() - 1;
@@ -360,6 +364,8 @@ namespace meta
 		static int AddTypeData(TypeData&& rhs)
 		{
 			s_TypeDataStorage.emplace_back(std::move(rhs));
+
+			assert(s_TypeDataStorage.size() <= TYPEDATA_CONTAINER_SIZE);
 
 			unsigned int lastIndex = s_TypeDataStorage.size() - 1;
 			sTypeDictionary.insert( std::make_pair(s_TypeDataStorage[lastIndex].m_name, lastIndex) );
@@ -421,7 +427,7 @@ namespace meta
 	public:
 		TypeData_Creator(const TypeData& rhs)
 		{
-			//TODO: this AddTypeData doesn't cover members and methods
+			//TODO: unused? If so, Remove this.
 			unsigned int index = TypeData::AddTypeData(rhs);
 			refIndex = index;
 		}

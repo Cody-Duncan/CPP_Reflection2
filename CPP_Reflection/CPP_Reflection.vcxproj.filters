@@ -48,6 +48,9 @@
     <ClInclude Include="MetaProgrammingTests.h">
       <Filter>Tests</Filter>
     </ClInclude>
+    <ClInclude Include="static_vector.h">
+      <Filter>Meta</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AnyTest.cpp">
