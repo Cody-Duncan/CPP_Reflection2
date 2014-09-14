@@ -27,9 +27,9 @@ namespace MetaTest
 
 		float getB() const { return b; }
 
-		void foo() { a *= 3; }
+		void foo() { std::cout << "FOO()" << std::endl; a *= 3; }
 
-		void stuff(int a, double b, char c) const { std::cout << a + b + c << std::endl; }
+		void stuff(int a, double b, char c) const { std::cout << "STUFF()" << std::endl; std::cout << a + b + c << std::endl; }
 
 		//meta_declare(A1);
 
@@ -51,7 +51,7 @@ namespace MetaTest
 
 	void Test1()
 	{
-		meta::has_get_meta<A1>::value ;
+		meta::has_getType_function<A1>::value ;
 
 		meta::has_meta<A1>::value ;
 
@@ -97,6 +97,17 @@ namespace MetaTest
 			}
 			std::cout << ")" << std::endl;
 		}
-		
+
+		//Test function invocation.
+		float arg = 4.0f;
+		int expected = 2;
+		Any result = meta::Invoke(aInfo->GetMethod("bar"), a, 4.0f);
+		int resultValue = result.cast<int>();
+		std::cout << "Ran A1::bar() with argument " << 4.0f << ". Result should be " << expected << ". Result is: " << resultValue << std::endl;
+
+		//Retrieve via name
+		const meta::TypeData* aInfoAgain = meta::Get_Name("A1");
+		std::cout << "Retrieved type via name. Tried to get A1" << "; recieved " << aInfoAgain->GetNameStr() << std::endl;
+
 	}
 }

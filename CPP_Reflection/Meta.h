@@ -34,10 +34,8 @@ namespace meta
 	};
 
 
-	//has meta
-
-	template <typename T>
-	class has_get_meta 
+	// SFINAE - determines if a an object has a GetType() method. ( Added via meta_declare() )
+	template <typename T> class has_getType_function 
 	{
 		private:
 			template<typename U> static auto test(void*) -> decltype(std::declval<U>().GetType(), std::true_type());
@@ -47,8 +45,9 @@ namespace meta
 			static bool const value = std::is_same<decltype(test<T>(0)), std::true_type>::value;
 	};
 
-	template <typename T>
-	class has_meta 
+	// SFINAE - determines if a an object has had its internals registered with meta_declare()
+	// (Has Object::TypeDataStaticHolder::s_TypeData)
+	template <typename T> class has_meta 
 	{
 		private:
 			template<typename U> static auto test(void*) -> decltype(std::declval<typename U::TypeDataStaticHolder>().s_TypeData, std::true_type());
@@ -102,13 +101,13 @@ namespace meta
 	//Get From Pointer
 
 	template <typename T>
-	typename std::enable_if<has_get_meta<T>::value, const TypeData*>::type Get(const T* type)
+	typename std::enable_if<has_getType_function<T>::value, const TypeData*>::type Get(const T* type)
 	{
 		return type->GetType();
 	}
 
 	template <typename T>
-	typename std::enable_if<!has_get_meta<T>::value, const TypeData*>::type Get(const T* type)
+	typename std::enable_if<!has_getType_function<T>::value, const TypeData*>::type Get(const T* type)
 	{
 		return Get<T>();
 	}
@@ -116,16 +115,21 @@ namespace meta
 	//Get From Reference
 
 	template <typename T>
-	typename std::enable_if<!std::is_pointer<T>::value && has_get_meta<T>::value, const TypeData*>::type Get(const T& type)
+	typename std::enable_if<!std::is_pointer<T>::value && has_getType_function<T>::value, const TypeData*>::type Get(const T& type)
 	{
 		return type.GetType();
 	}
 
 	template <typename T>
-	typename std::enable_if<!std::is_pointer<T>::value && !has_get_meta<T>::value, const TypeData*>::type Get(const T& type)
+	typename std::enable_if<!std::is_pointer<T>::value && !has_getType_function<T>::value, const TypeData*>::type Get(const T& type)
 	{
 		return Get<T>();
 	}
+
+	//Get By Name
+	const TypeData* Get_Name(std::string typeName);
+	const TypeData* Get_Name(const char* typeName);
+
 
 	/*********************************************************/
 	//                      TypeRecord                       //
@@ -255,7 +259,7 @@ namespace meta
 		std::string GetTypeNameStr() const;
 
 		const char* GetName() const { return m_name; }
-		std::string GetNameStr() { return std::string(m_name); }
+		std::string GetNameStr() const { return std::string(m_name); }
 
 		size_t GetSize();
 	};
@@ -302,6 +306,7 @@ namespace meta
 		//Call()
 		//CanCall()
 
+		virtual Any DoCall(Any& obj, Any* argv) const = 0;
 	};
 
 
@@ -406,8 +411,14 @@ namespace meta
 		std::vector<Member*>&       GetMembers()       { return m_members; }
 		const std::vector<Member*>& GetMembers() const { return m_members; }
 
+		Member* GetMember(std::string name);
+		const Member* GetMember(std::string name) const;
+
 		std::vector<Method*>&       GetMethods()       { return m_methods; }
 		const std::vector<Method*>& GetMethods() const { return m_methods; }
+
+		Method* GetMethod(std::string name);
+		const Method* GetMethod(std::string name) const;
 	};
 
 
@@ -600,9 +611,6 @@ namespace meta
 		{
 			return new meta::internal::VarMethod<ReturnType, Object, true, Args...>(name, method);
 		}
-
-
-
 		
 		/**************************************************************/
 		//                      TypeDataBuilder                       //
@@ -657,6 +665,19 @@ namespace meta
 			TypeDataBuilder(const char* name, size_t size) : TypeData(name, size) 
 			{}
 		};
+	}
+
+	template<typename Object_T, typename... Args>
+	Any Invoke(const Method* method, Object_T& object, Args... args)
+	{
+		Any argV[sizeof...(Args)] = { Any(args)... };
+		return method->DoCall(Any(object), argV);
+	}
+
+	template<typename Object_T>
+	Any Invoke(const Method* method, Object_T& object)
+	{
+		return method->DoCall(Any(object), nullptr);
 	}
 }
 
