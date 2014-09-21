@@ -31,5 +31,8 @@ namespace AnyTest
 
 		a.cast<bool>() = false;
 		cout << a.cast<bool>() << endl;
+
+		a = "Hello";
+		const char* output = a.cast<const char*>();
 	}
 }
